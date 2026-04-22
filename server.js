@@ -1,0 +1,261 @@
+import express from 'express';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import sqlite3 from 'sqlite3';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// GAME_CONFIG: ゲームの定数設定
+const GAME_CONFIG = {
+  INITIAL_LIVES: 5,
+  SCORE_MULTIPLIER: 1000,
+  TIME_PENALTY: 10,
+  QUESTION_PENALTY: 50,
+  CLEANUP_INTERVAL_MS: 1000 * 60 * 10, // 10分ごとにクリーンアップ処理を実行
+  CLEANUP_THRESHOLD_MS: 1000 * 60 * 60, // 1時間更新がないルームを削除
+};
+
+const app = express();
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+  },
+});
+
+const PORT = process.env.PORT || 8080;
+
+// SQLite3 DB 初期化
+const db = new sqlite3.Database(path.join(__dirname, 'database.sqlite'), (err) => {
+  if (err) console.error('DB接続エラー:', err);
+  else console.log('SQLite DBに接続しました。');
+});
+
+// テーブル初期化
+db.serialize(() => {
+  db.run(`
+    CREATE TABLE IF NOT EXISTS rooms (
+      room_id TEXT PRIMARY KEY,
+      theme TEXT,
+      state TEXT, -- 'waiting', 'playing', 'finished'
+      current_turn TEXT, -- 'p1', 'p2'
+      p1_lives INTEGER,
+      p2_lives INTEGER,
+      p1_questions INTEGER DEFAULT 0,
+      p2_questions INTEGER DEFAULT 0,
+      start_time INTEGER,
+      last_update INTEGER,
+      winner TEXT
+    )
+  `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      room_id TEXT,
+      sender_role TEXT,
+      message_type TEXT,
+      message TEXT,
+      timestamp INTEGER
+    )
+  `);
+});
+
+// 静的ファイルの配信 (Viteビルド後)
+app.use(express.static(path.join(__dirname, 'dist')));
+
+// DBヘルパー関数
+const getRoom = (roomId) => {
+  return new Promise((resolve, reject) => {
+    db.get('SELECT * FROM rooms WHERE room_id = ?', [roomId], (err, row) => {
+      if (err) reject(err);
+      else resolve(row);
+    });
+  });
+};
+
+const getLogs = (roomId) => {
+  return new Promise((resolve, reject) => {
+    db.all('SELECT * FROM logs WHERE room_id = ? ORDER BY timestamp ASC', [roomId], (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows);
+    });
+  });
+};
+
+const updateRoom = (roomId, updates) => {
+  return new Promise((resolve, reject) => {
+    updates.last_update = Date.now();
+    const keys = Object.keys(updates);
+    const setClause = keys.map(k => `${k} = ?`).join(', ');
+    const values = keys.map(k => updates[k]);
+    db.run(`UPDATE rooms SET ${setClause} WHERE room_id = ?`, [...values, roomId], function(err) {
+      if (err) reject(err);
+      else resolve(this.changes);
+    });
+  });
+};
+
+// クリーンアップ処理
+setInterval(() => {
+  const threshold = Date.now() - GAME_CONFIG.CLEANUP_THRESHOLD_MS;
+  db.serialize(() => {
+    db.all('SELECT room_id FROM rooms WHERE last_update < ?', [threshold], (err, rows) => {
+      if (err || !rows) return;
+      rows.forEach(row => {
+        db.run('DELETE FROM rooms WHERE room_id = ?', [row.room_id]);
+        db.run('DELETE FROM logs WHERE room_id = ?', [row.room_id]);
+        console.log(`Cleaned up old room: ${row.room_id}`);
+      });
+    });
+  });
+}, GAME_CONFIG.CLEANUP_INTERVAL_MS);
+
+// Socket.IO 処理
+io.on('connection', (socket) => {
+  console.log(`User connected: ${socket.id}`);
+
+  // ルーム参加
+  socket.on('join_room', async ({ roomId, role }) => {
+    socket.join(roomId);
+    socket.roomId = roomId;
+    socket.role = role;
+
+    let room = await getRoom(roomId);
+    if (!room) {
+      // ルーム新規作成
+      const now = Date.now();
+      db.run(
+        `INSERT INTO rooms (room_id, state, p1_lives, p2_lives, start_time, last_update) VALUES (?, ?, ?, ?, ?, ?)`,
+        [roomId, 'waiting', GAME_CONFIG.INITIAL_LIVES, GAME_CONFIG.INITIAL_LIVES, now, now]
+      );
+      room = await getRoom(roomId);
+    }
+    
+    const logs = await getLogs(roomId);
+    io.to(roomId).emit('game_state_update', { room, logs });
+  });
+
+  // お題設定 (GM)
+  socket.on('set_theme', async ({ theme }) => {
+    if (!socket.roomId) return;
+    await updateRoom(socket.roomId, {
+      theme,
+      state: 'playing',
+      current_turn: 'p1', // P1からスタート
+      start_time: Date.now() // 開始時間をリセット
+    });
+    const room = await getRoom(socket.roomId);
+    io.to(socket.roomId).emit('game_state_update', { room });
+    // ログ保存
+    addLog(socket.roomId, 'gm', 'system', `お題が設定されました。ゲーム開始です！`);
+  });
+
+  // 質問送信 (プレイヤーからGM)
+  socket.on('send_question', async ({ text }) => {
+    if (!socket.roomId || !socket.role) return;
+    const room = await getRoom(socket.roomId);
+    if (room.state !== 'playing' || room.current_turn !== socket.role) return;
+
+    // 質問回数をインクリメント
+    const updates = {};
+    if (socket.role === 'p1') updates.p1_questions = room.p1_questions + 1;
+    if (socket.role === 'p2') updates.p2_questions = room.p2_questions + 1;
+    await updateRoom(socket.roomId, updates);
+
+    await addLog(socket.roomId, socket.role, 'question', text);
+    // 質問送信時はターンはそのまま（GMの回答待ち）
+  });
+
+  // 回答送信 (GMからプレイヤー)
+  socket.on('send_answer', async ({ text, targetRole }) => {
+    if (!socket.roomId) return;
+    await addLog(socket.roomId, 'gm', 'answer', `[${targetRole}へ] ${text}`);
+    // 回答が返ってきても、ターンのプレイヤーはお題回答かパスを行うのでターンはそのまま
+  });
+
+  // お題予想 / パス
+  socket.on('guess_or_pass', async ({ action, guess }) => {
+    if (!socket.roomId || !socket.role) return;
+    let room = await getRoom(socket.roomId);
+    if (room.state !== 'playing' || room.current_turn !== socket.role) return;
+
+    if (action === 'pass') {
+      await addLog(socket.roomId, socket.role, 'system', `パスしました。`);
+    } else if (action === 'guess') {
+      await addLog(socket.roomId, socket.role, 'guess', `お題は「${guess}」ですか？`);
+      
+      if (guess === room.theme) {
+        // 正解
+        await addLog(socket.roomId, 'gm', 'system', `${socket.role}が正解しました！`);
+        await updateRoom(socket.roomId, { state: 'finished', winner: socket.role });
+      } else {
+        // 不正解
+        await addLog(socket.roomId, 'gm', 'system', `不正解です。ライフが1減ります。`);
+        let newLives = socket.role === 'p1' ? room.p1_lives - 1 : room.p2_lives - 1;
+        const updates = {};
+        if (socket.role === 'p1') updates.p1_lives = newLives;
+        if (socket.role === 'p2') updates.p2_lives = newLives;
+        
+        if (newLives <= 0) {
+          // 敗北
+          const winner = socket.role === 'p1' ? 'p2' : 'p1';
+          updates.state = 'finished';
+          updates.winner = winner;
+          await addLog(socket.roomId, 'gm', 'system', `${socket.role}のライフが0になりました。${winner}の勝利です！`);
+        }
+        await updateRoom(socket.roomId, updates);
+      }
+    }
+
+    room = await getRoom(socket.roomId);
+
+    // ターン交代 (ゲームが終了していない場合のみ)
+    if (room.state === 'playing') {
+      const nextTurn = room.current_turn === 'p1' ? 'p2' : 'p1';
+      await updateRoom(socket.roomId, { current_turn: nextTurn });
+    }
+    
+    // 状態同期
+    room = await getRoom(socket.roomId);
+    const logs = await getLogs(socket.roomId);
+    io.to(socket.roomId).emit('game_state_update', { room, logs });
+  });
+
+  const addLog = async (roomId, sender, type, message) => {
+    return new Promise((resolve, reject) => {
+      const now = Date.now();
+      db.run(
+        `INSERT INTO logs (room_id, sender_role, message_type, message, timestamp) VALUES (?, ?, ?, ?, ?)`,
+        [roomId, sender, type, message, now],
+        async function (err) {
+          if (err) reject(err);
+          // 最新ログを送信
+          const room = await getRoom(roomId);
+          const logs = await getLogs(roomId);
+          io.to(roomId).emit('game_state_update', { room, logs });
+          resolve();
+        }
+      );
+    });
+  };
+
+  socket.on('disconnect', () => {
+    console.log(`User disconnected: ${socket.id}`);
+  });
+});
+
+// React Router のフォールバックロジック
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
+if (process.env.NODE_ENV !== 'test') {
+  server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
+
+export { server, io, db, getRoom, getLogs, updateRoom };

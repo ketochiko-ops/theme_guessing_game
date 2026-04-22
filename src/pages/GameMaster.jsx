@@ -1,0 +1,122 @@
+import React, { useState, useContext, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { SocketContext } from '../App';
+
+function GameMaster() {
+  const { socket, gameState, role } = useContext(SocketContext);
+  const [theme, setTheme] = useState('');
+  const [answerInput, setAnswerInput] = useState('');
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!role || role !== 'gm') {
+      navigate('/');
+    }
+  }, [role, navigate]);
+
+  useEffect(() => {
+    if (gameState.room?.state === 'finished') {
+      navigate('/result');
+    }
+  }, [gameState.room?.state, navigate]);
+
+  if (!gameState.room) return <div className="text-center mt-5">ロード中...</div>;
+
+  const handleSetTheme = (e) => {
+    e.preventDefault();
+    if (theme) {
+      socket.emit('set_theme', { theme });
+    }
+  };
+
+  const handleAnswer = (e, targetRole) => {
+    e.preventDefault();
+    if (answerInput) {
+      socket.emit('send_answer', { text: answerInput, targetRole });
+      setAnswerInput('');
+    }
+  };
+
+  const room = gameState.room;
+  const isPlaying = room.state === 'playing';
+
+  return (
+    <div className="card p-4">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2>GM 画面</h2>
+        <span className="badge bg-secondary">Room: {room.room_id}</span>
+      </div>
+
+      {!isPlaying ? (
+        <form onSubmit={handleSetTheme} className="mb-4">
+          <div className="input-group">
+            <input 
+              type="text" 
+              className="form-control" 
+              placeholder="お題を入力してください (例: りんご)" 
+              value={theme}
+              onChange={(e) => setTheme(e.target.value)}
+              required
+            />
+            <button className="btn btn-primary" type="submit">お題を設定して開始</button>
+          </div>
+        </form>
+      ) : (
+        <div className="alert alert-info mb-4">
+          <h5>現在のお題: <strong>{room.theme}</strong></h5>
+          <p className="mb-0">現在のターン: {room.current_turn === 'p1' ? 'プレイヤー1' : 'プレイヤー2'}</p>
+        </div>
+      )}
+
+      <div className="row mb-4 text-center">
+        <div className="col-6">
+          <div className="card bg-light">
+            <div className="card-body">
+              <h5 className="card-title text-danger">P1 ライフ</h5>
+              <h3 className="mb-0">{room.p1_lives !== undefined ? room.p1_lives : '-'}</h3>
+            </div>
+          </div>
+        </div>
+        <div className="col-6">
+          <div className="card bg-light">
+            <div className="card-body">
+              <h5 className="card-title text-success">P2 ライフ</h5>
+              <h3 className="mb-0">{room.p2_lives !== undefined ? room.p2_lives : '-'}</h3>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="chat-area border rounded p-3 mb-3" style={{ height: '300px', overflowY: 'auto', backgroundColor: '#fff' }}>
+        {gameState.logs.map((log) => (
+          <div key={log.id} className={`mb-2 ${log.sender_role === 'gm' ? 'text-end' : ''}`}>
+            <span className="badge bg-dark me-2">{log.sender_role.toUpperCase()}</span>
+            <span>{log.message}</span>
+            <div className="text-muted" style={{ fontSize: '0.8rem' }}>
+              {new Date(log.timestamp).toLocaleTimeString()}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {isPlaying && (
+        <div className="card bg-light p-3">
+          <h5>プレイヤーへの回答</h5>
+          <div className="input-group">
+            <input 
+              type="text" 
+              className="form-control" 
+              placeholder="はい / いいえ / わからない 等" 
+              value={answerInput}
+              onChange={(e) => setAnswerInput(e.target.value)}
+            />
+            <button className="btn btn-outline-danger" onClick={(e) => handleAnswer(e, 'p1')}>P1へ回答</button>
+            <button className="btn btn-outline-success" onClick={(e) => handleAnswer(e, 'p2')}>P2へ回答</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default GameMaster;
