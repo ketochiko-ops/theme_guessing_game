@@ -109,15 +109,29 @@ function Top() {
           <p className="text-muted text-center my-3">現在、お知らせはありません。</p>
         ) : (
           <div className="list-group">
-            {announcements.map((info, idx) => (
-              <div key={idx} className="list-group-item text-start border-0 border-bottom">
-                <div className="d-flex w-100 justify-content-between align-items-center mb-1">
-                  <span className="badge bg-secondary">{info.category}</span>
-                  <small className="text-muted">{info.date}</small>
+            {announcements.map((info, idx) => {
+              // URLをaタグに変換するヘルパー
+              const urlRegex = /(https?:\/\/[^\s]+)/g;
+              const textParts = info.content.split(urlRegex);
+              
+              return (
+                <div key={idx} className="list-group-item text-start border-0 border-bottom">
+                  <div className="d-flex w-100 justify-content-between align-items-center mb-1">
+                    <span className="badge bg-secondary">{info.category}</span>
+                    <small className="text-muted">{info.date}</small>
+                  </div>
+                  <p className="mb-1 text-dark">
+                    {textParts.map((part, i) => 
+                      part.match(urlRegex) ? (
+                        <a key={i} href={part} target="_blank" rel="noopener noreferrer">{part}</a>
+                      ) : (
+                        part
+                      )
+                    )}
+                  </p>
                 </div>
-                <p className="mb-1 text-dark">{info.content}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
