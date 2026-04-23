@@ -17,16 +17,17 @@ function Result() {
   useEffect(() => {
     if (gameState.room && gameState.room.state === 'finished') {
       const r = gameState.room;
-      // 経過時間 (秒) - last_update に終了時刻が入っている想定
-      const seconds = Math.max(0, Math.floor((r.last_update - r.start_time) / 1000));
-      setElapsedSeconds(seconds);
-
-      // スコア計算: (残りライフ × 1000) - (経過時間(秒) × 10) - (質問数 × 50)
+      // 経過時間 (秒) - 勝者の実際の消費時間を使用
       if (r.winner === 'p1' || r.winner === 'p2') {
         const winnerLives = r.winner === 'p1' ? r.p1_lives : r.p2_lives;
         const winnerQs = r.winner === 'p1' ? r.p1_questions : r.p2_questions;
+        const winnerTimeUsed = r.winner === 'p1' ? (r.p1_time_used || 0) : (r.p2_time_used || 0);
         
-        let calcScore = (winnerLives * 1000) - (seconds * 10) - (winnerQs * 50);
+        const seconds = Math.floor(winnerTimeUsed / 1000);
+        setElapsedSeconds(seconds);
+
+        // スコア計算: (残りライフ × 1000) - (経過時間(秒) × 1) - (質問数 × 10)
+        let calcScore = (winnerLives * 1000) - (seconds * 1) - (winnerQs * 10);
         // スコアがマイナスにならないようにする
         if (calcScore < 0) calcScore = 0;
         setScore(calcScore);
