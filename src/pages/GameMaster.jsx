@@ -40,6 +40,9 @@ function GameMaster() {
   const room = gameState.room;
   const isPlaying = room.state === 'playing';
 
+  const lastLog = gameState.logs.length > 0 ? gameState.logs[gameState.logs.length - 1] : null;
+  const pendingQuestionRole = (lastLog && lastLog.message_type === 'question') ? lastLog.sender_role : null;
+
   return (
     <div className="card p-4">
       <div className="d-flex justify-content-between align-items-center mb-3">
@@ -109,10 +112,28 @@ function GameMaster() {
               placeholder="はい / いいえ / わからない 等" 
               value={answerInput}
               onChange={(e) => setAnswerInput(e.target.value)}
+              disabled={!pendingQuestionRole}
             />
-            <button className="btn btn-outline-danger" onClick={(e) => handleAnswer(e, 'p1')}>P1へ回答</button>
-            <button className="btn btn-outline-success" onClick={(e) => handleAnswer(e, 'p2')}>P2へ回答</button>
+            <button 
+              className="btn btn-outline-danger" 
+              onClick={(e) => handleAnswer(e, 'p1')}
+              disabled={pendingQuestionRole !== 'p1'}
+            >
+              P1へ回答
+            </button>
+            <button 
+              className="btn btn-outline-success" 
+              onClick={(e) => handleAnswer(e, 'p2')}
+              disabled={pendingQuestionRole !== 'p2'}
+            >
+              P2へ回答
+            </button>
           </div>
+          {!pendingQuestionRole && (
+            <small className="text-muted d-block mt-2">
+              ※プレイヤーから質問が来るまで回答できません。
+            </small>
+          )}
         </div>
       )}
     </div>

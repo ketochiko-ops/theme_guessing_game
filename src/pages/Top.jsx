@@ -44,6 +44,8 @@ function Top() {
     
     if (selectedRole === 'gm') {
       navigate('/gm');
+    } else if (selectedRole === 'obs') {
+      navigate('/observer');
     } else {
       navigate('/player');
     }
@@ -55,7 +57,7 @@ function Top() {
         <h1 className="mb-4">お題当てオンライン（仮）</h1>
         <form onSubmit={handleJoin}>
           <div className="mb-3 text-start">
-            <label className="form-label fw-bold">ルームID (共通の文字列)</label>
+            <label className="form-label fw-bold">合言葉 (遊びたい人同士で共通の文字列を決めてください)</label>
             <input
               type="text"
               className="form-control form-control-lg"
@@ -71,15 +73,19 @@ function Top() {
             <div className="btn-group w-100" role="group">
               <input type="radio" className="btn-check" name="role" id="role-gm" autoComplete="off" 
                     checked={selectedRole === 'gm'} onChange={() => setSelectedRole('gm')} />
-              <label className="btn btn-outline-primary" htmlFor="role-gm">ゲームマスター (GM)</label>
+              <label className="btn btn-outline-primary" htmlFor="role-gm">GM</label>
 
               <input type="radio" className="btn-check" name="role" id="role-p1" autoComplete="off" 
                     checked={selectedRole === 'p1'} onChange={() => setSelectedRole('p1')} />
-              <label className="btn btn-outline-danger" htmlFor="role-p1">プレイヤー1 (P1)</label>
+              <label className="btn btn-outline-danger" htmlFor="role-p1">P1</label>
 
               <input type="radio" className="btn-check" name="role" id="role-p2" autoComplete="off" 
                     checked={selectedRole === 'p2'} onChange={() => setSelectedRole('p2')} />
-              <label className="btn btn-outline-success" htmlFor="role-p2">プレイヤー2 (P2)</label>
+              <label className="btn btn-outline-success" htmlFor="role-p2">P2</label>
+
+              <input type="radio" className="btn-check" name="role" id="role-obs" autoComplete="off" 
+                    checked={selectedRole === 'obs'} onChange={() => setSelectedRole('obs')} />
+              <label className="btn btn-outline-info" htmlFor="role-obs">観戦者</label>
             </div>
           </div>
 

@@ -46,7 +46,7 @@ function Result() {
       </div>
 
       <div className="my-5">
-        <h2 className="display-4 font-weight-bold" style={{ color: isWinner ? 'green' : (role === 'gm' ? 'black' : 'red') }}>
+        <h2 className="display-4 font-weight-bold" style={{ color: isWinner ? 'green' : (role === 'gm' || role === 'obs' ? 'black' : 'red') }}>
           {room.winner === 'p1' ? 'プレイヤー1' : 'プレイヤー2'} の勝利！
         </h2>
       </div>

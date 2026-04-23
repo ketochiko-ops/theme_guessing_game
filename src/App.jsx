@@ -4,6 +4,7 @@ import io from 'socket.io-client';
 import Top from './pages/Top';
 import GameMaster from './pages/GameMaster';
 import Player from './pages/Player';
+import Observer from './pages/Observer';
 import Result from './pages/Result';
 
 export const SocketContext = createContext();
@@ -39,6 +40,7 @@ function App() {
             <Route path="/" element={<Top />} />
             <Route path="/gm" element={<GameMaster />} />
             <Route path="/player" element={<Player />} />
+            <Route path="/observer" element={<Observer />} />
             <Route path="/result" element={<Result />} />
           </Routes>
         </div>
