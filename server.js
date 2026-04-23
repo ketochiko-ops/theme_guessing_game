@@ -175,6 +175,19 @@ io.on('connection', (socket) => {
     if (!socket.roomId) return;
     await updateRoom(socket.roomId, {
       theme,
+      state: 'ready',
+    });
+    const room = await getRoom(socket.roomId);
+    io.to(socket.roomId).emit('game_state_update', { room });
+  });
+
+  // ゲーム開始 (GM)
+  socket.on('start_game', async () => {
+    if (!socket.roomId) return;
+    const room = await getRoom(socket.roomId);
+    if (room.state !== 'ready' && room.state !== 'waiting') return;
+    
+    await updateRoom(socket.roomId, {
       state: 'playing',
       current_turn: 'p1', // P1からスタート
       turn_count: 1,
@@ -183,10 +196,49 @@ io.on('connection', (socket) => {
       timer_start_time: Date.now(),
       start_time: Date.now() // 開始時間をリセット
     });
+    const updatedRoom = await getRoom(socket.roomId);
+    io.to(socket.roomId).emit('game_state_update', { room: updatedRoom });
+    await addLog(socket.roomId, 'gm', 'system', `ゲーム開始です！`);
+  });
+
+  // 一時停止 (GM)
+  socket.on('pause_game', async () => {
+    if (!socket.roomId) return;
     const room = await getRoom(socket.roomId);
-    io.to(socket.roomId).emit('game_state_update', { room });
-    // ログ保存
-    addLog(socket.roomId, 'gm', 'system', `お題が設定されました。ゲーム開始です！`);
+    if (room.state !== 'playing') return;
+
+    const updates = { state: 'paused', timer_start_time: null };
+    if (room.timer_start_time) {
+      const timeSpent = Date.now() - room.timer_start_time;
+      if (room.current_turn === 'p1') updates.p1_time_used = room.p1_time_used + timeSpent;
+      if (room.current_turn === 'p2') updates.p2_time_used = room.p2_time_used + timeSpent;
+    }
+    await updateRoom(socket.roomId, updates);
+    const updatedRoom = await getRoom(socket.roomId);
+    io.to(socket.roomId).emit('game_state_update', { room: updatedRoom });
+    await addLog(socket.roomId, 'gm', 'system', `ゲームが一時停止されました。`);
+  });
+
+  // 再開 (GM)
+  socket.on('resume_game', async () => {
+    if (!socket.roomId) return;
+    const room = await getRoom(socket.roomId);
+    if (room.state !== 'paused') return;
+
+    const updates = { state: 'playing' };
+    const logs = await getLogs(socket.roomId);
+    const lastLog = logs.length > 0 ? logs[logs.length - 1] : null;
+    const isWaitingForAnswer = lastLog && lastLog.message_type === 'question';
+    
+    // 質問への回答待ちでなければタイマー再開
+    if (!isWaitingForAnswer) {
+      updates.timer_start_time = Date.now();
+    }
+    
+    await updateRoom(socket.roomId, updates);
+    const updatedRoom = await getRoom(socket.roomId);
+    io.to(socket.roomId).emit('game_state_update', { room: updatedRoom });
+    await addLog(socket.roomId, 'gm', 'system', `ゲームが再開されました。`);
   });
 
   // 質問送信 (プレイヤーからGM)
@@ -231,6 +283,12 @@ io.on('connection', (socket) => {
       const logs = await getLogs(socket.roomId);
       io.to(socket.roomId).emit('game_state_update', { room: updatedRoom, logs });
     }
+  });
+
+  // 全体チャット送信 (GM)
+  socket.on('send_chat', async ({ text }) => {
+    if (!socket.roomId) return;
+    await addLog(socket.roomId, 'gm', 'chat', text);
   });
 
   // お題予想 / パス

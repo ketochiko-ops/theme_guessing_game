@@ -32,11 +32,12 @@ function Player() {
   const isPlaying = room.state === 'playing';
   const isMyTurn = room.current_turn === role;
 
-  // プレイヤーは自分に関するログとGMのアナウンス(system)のみ表示する
+  // プレイヤーは自分に関するログとGMのアナウンス(system)、全体チャット(chat)のみ表示する
   const visibleLogs = gameState.logs.filter(log => 
     log.sender_role === role || 
     log.message.includes(`[${role}へ]`) || 
-    log.message_type === 'system'
+    log.message_type === 'system' ||
+    log.message_type === 'chat'
   );
 
   const handleSendQuestion = (e) => {
@@ -88,7 +89,7 @@ function Player() {
         <div ref={chatBottomRef} />
       </div>
 
-      {isPlaying && (
+      {(isPlaying || room.state === 'paused') && (
         <div>
           {/* アクション: 質問 */}
           <form onSubmit={handleSendQuestion} className="mb-3">
@@ -99,9 +100,9 @@ function Player() {
                 placeholder="GMに質問する (例: 食べ物ですか？)" 
                 value={questionInput}
                 onChange={(e) => setQuestionInput(e.target.value)}
-                disabled={!isMyTurn}
+                disabled={!isMyTurn || room.state === 'paused'}
               />
-              <button className="btn btn-primary" type="submit" disabled={!isMyTurn || !questionInput}>質問送信</button>
+              <button className="btn btn-primary" type="submit" disabled={!isMyTurn || !questionInput || room.state === 'paused'}>質問送信</button>
             </div>
           </form>
 
@@ -115,15 +116,15 @@ function Player() {
                   placeholder="お題をズバリ当てる！" 
                   value={guessInput}
                   onChange={(e) => setGuessInput(e.target.value)}
-                  disabled={!isMyTurn}
+                  disabled={!isMyTurn || room.state === 'paused'}
                 />
-                <button className="btn btn-success" onClick={handleGuess} disabled={!isMyTurn || !guessInput}>
+                <button className="btn btn-success" onClick={handleGuess} disabled={!isMyTurn || !guessInput || room.state === 'paused'}>
                   回答する！
                 </button>
               </div>
             </div>
             <div className="col-sm-4 text-end">
-              <button className="btn btn-secondary w-100" onClick={handlePass} disabled={!isMyTurn}>
+              <button className="btn btn-secondary w-100" onClick={handlePass} disabled={!isMyTurn || room.state === 'paused'}>
                 パス (ターン終了)
               </button>
             </div>
@@ -131,6 +132,11 @@ function Player() {
           <small className="text-muted d-block mt-2">
             ※質問への回答をもらった後、「お題を回答」するか「パス」して相手にターンを渡してください。
           </small>
+          {room.state === 'paused' && (
+            <small className="text-danger d-block mt-1 fw-bold">
+              ※一時停止中のため操作できません。
+            </small>
+          )}
         </div>
       )}
     </div>

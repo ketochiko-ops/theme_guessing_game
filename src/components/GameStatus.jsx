@@ -22,9 +22,12 @@ function GameStatus({ room, role }) {
 
   return (
     <>
-      {room.state === 'playing' && (
-        <div className="alert alert-info mb-4">
-          {canSeeTheme && <h5>現在のお題: <strong>{room.theme}</strong></h5>}
+      {(room.state === 'playing' || room.state === 'paused') && (
+        <div className={`alert ${room.state === 'paused' ? 'alert-warning' : 'alert-info'} mb-4`}>
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <div>{canSeeTheme && <h5 className="mb-0">現在のお題: <strong>{room.theme}</strong></h5>}</div>
+            {room.state === 'paused' && <span className="badge bg-danger fs-6">一時停止中</span>}
+          </div>
           <p className="mb-0">
           現在のターン: {room.current_turn === 'p1' ? 'プレイヤー1' : 'プレイヤー2'} 
           <span className="ms-2 badge bg-primary">第 {room.turn_count || 1} ターン</span>
