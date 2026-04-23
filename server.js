@@ -142,6 +142,34 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('game_state_update', { room, logs });
   });
 
+  // ゲームリセット (GM)
+  socket.on('reset_game', async () => {
+    if (!socket.roomId) return;
+    await updateRoom(socket.roomId, {
+      theme: null,
+      state: 'waiting',
+      current_turn: null,
+      turn_count: 1,
+      p1_lives: GAME_CONFIG.INITIAL_LIVES,
+      p2_lives: GAME_CONFIG.INITIAL_LIVES,
+      p1_questions: 0,
+      p2_questions: 0,
+      p1_time_used: 0,
+      p2_time_used: 0,
+      timer_start_time: null,
+      start_time: Date.now(),
+      winner: null
+    });
+    
+    // ログを削除
+    await new Promise((resolve) => {
+      db.run('DELETE FROM logs WHERE room_id = ?', [socket.roomId], () => resolve());
+    });
+
+    const room = await getRoom(socket.roomId);
+    io.to(socket.roomId).emit('game_state_update', { room, logs: [] });
+  });
+
   // お題設定 (GM)
   socket.on('set_theme', async ({ theme }) => {
     if (!socket.roomId) return;

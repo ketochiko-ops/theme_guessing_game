@@ -44,11 +44,20 @@ function GameMaster() {
   const lastLog = gameState.logs.length > 0 ? gameState.logs[gameState.logs.length - 1] : null;
   const pendingQuestionRole = (lastLog && lastLog.message_type === 'question') ? lastLog.sender_role : null;
 
+  const handleReset = () => {
+    if (window.confirm('ゲームをリセットして最初からやり直しますか？')) {
+      socket.emit('reset_game');
+    }
+  };
+
   return (
     <div className="card p-4">
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h2>GM 画面</h2>
-        <span className="badge bg-secondary">Room: {room.room_id}</span>
+        <div>
+          <button className="btn btn-outline-danger btn-sm me-2" onClick={handleReset}>リセット</button>
+          <span className="badge bg-secondary">Room: {room.room_id}</span>
+        </div>
       </div>
 
       {!isPlaying ? (
