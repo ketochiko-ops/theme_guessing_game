@@ -99,6 +99,7 @@ function Observer() {
                 placeholder="全体チャットにメッセージを送信..." 
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
+                maxLength={100}
               />
               <button className="btn btn-secondary" type="submit" disabled={!chatInput}>
                 送信

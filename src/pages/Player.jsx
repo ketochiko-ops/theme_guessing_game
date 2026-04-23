@@ -129,6 +129,7 @@ function Player() {
                 placeholder="全体チャットにメッセージを送信..." 
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
+                maxLength={100}
               />
               <button className="btn btn-secondary" type="submit" disabled={!chatInput}>
                 送信
@@ -150,6 +151,7 @@ function Player() {
                 value={questionInput}
                 onChange={(e) => setQuestionInput(e.target.value)}
                 disabled={!isMyTurn || room.state === 'paused'}
+                maxLength={100}
               />
               <button className="btn btn-primary" type="submit" disabled={!isMyTurn || !questionInput || room.state === 'paused'}>質問送信</button>
             </div>
@@ -166,6 +168,7 @@ function Player() {
                   value={guessInput}
                   onChange={(e) => setGuessInput(e.target.value)}
                   disabled={!isMyTurn || room.state === 'paused'}
+                  maxLength={100}
                 />
                 <button className="btn btn-success" onClick={handleGuess} disabled={!isMyTurn || !guessInput || room.state === 'paused'}>
                   回答する！

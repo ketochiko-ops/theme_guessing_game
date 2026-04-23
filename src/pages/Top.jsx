@@ -3,12 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { SocketContext } from '../App';
 
 function Top() {
-  const [roomId, setRoomId] = useState('');
+  const [roomId, setRoomId] = useState(() => Math.floor(10000 + Math.random() * 90000).toString());
   const [selectedRole, setSelectedRole] = useState('gm');
   const { socket, setRole } = useContext(SocketContext);
   const navigate = useNavigate();
 
   const [announcements, setAnnouncements] = useState([]);
+
+  useEffect(() => {
+    if (selectedRole === 'gm' && !roomId) {
+      setRoomId(Math.floor(10000 + Math.random() * 90000).toString());
+    } else if (selectedRole !== 'gm') {
+      setRoomId('');
+    }
+  }, [selectedRole]);
 
   useEffect(() => {
     // public/info.csv を読み込み
@@ -57,11 +65,11 @@ function Top() {
         <h1 className="mb-4">お題当てオンライン（仮）</h1>
         <form onSubmit={handleJoin}>
           <div className="mb-3 text-start">
-            <label className="form-label fw-bold">合言葉 (遊びたい人同士で共通の文字列を決めてください)</label>
+            <label className="form-label fw-bold">部屋番号 {selectedRole === 'gm' && '(GM選択時に自動生成されます)'}</label>
             <input
               type="text"
               className="form-control form-control-lg"
-              placeholder="例: my-room-123"
+              placeholder={selectedRole === 'gm' ? "自動生成" : "GMから共有された5桁の数字"}
               value={roomId}
               onChange={(e) => setRoomId(e.target.value)}
               required

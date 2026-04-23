@@ -203,6 +203,7 @@ function GameMaster() {
                 placeholder="全体へのメッセージやヒントを入力..." 
                 value={generalChatInput}
                 onChange={(e) => setGeneralChatInput(e.target.value)}
+                maxLength={100}
               />
               <button 
                 className="btn btn-secondary" 
@@ -252,6 +253,7 @@ function GameMaster() {
               value={answerInput}
               onChange={(e) => setAnswerInput(e.target.value)}
               disabled={!pendingQuestionRole || isPaused}
+              maxLength={100}
             />
             <button 
               className="btn btn-outline-primary" 
