@@ -1,6 +1,7 @@
 import React, { useState, useContext, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SocketContext } from '../App';
+import GameStatus from '../components/GameStatus';
 
 function Player() {
   const { socket, gameState, role } = useContext(SocketContext);
@@ -69,24 +70,7 @@ function Player() {
         </span>
       </div>
 
-      <div className="row mb-3 text-center">
-        <div className="col-6">
-          <div className="card bg-light border-0">
-            <div className="card-body py-2">
-              <span className="text-muted d-block" style={{fontSize:'0.8rem'}}>あなたの残りライフ</span>
-              <h4>{role === 'p1' ? room.p1_lives : room.p2_lives}</h4>
-            </div>
-          </div>
-        </div>
-        <div className="col-6">
-          <div className="card bg-light border-0">
-            <div className="card-body py-2">
-              <span className="text-muted d-block" style={{fontSize:'0.8rem'}}>相手の残りライフ</span>
-              <h4>{role === 'p1' ? room.p2_lives : room.p1_lives}</h4>
-            </div>
-          </div>
-        </div>
-      </div>
+      <GameStatus room={room} role={role} />
 
       <div className="chat-area border rounded p-3 mb-4" style={{ height: '300px', overflowY: 'auto', backgroundColor: '#fff' }}>
         {!isPlaying && <div className="text-center text-muted mt-5">GMがお題を設定するのをお待ちください...</div>}

@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SocketContext } from '../App';
+import GameStatus from '../components/GameStatus';
 
 function Observer() {
   const { gameState, role } = useContext(SocketContext);
@@ -34,30 +35,8 @@ function Observer() {
           ゲーム開始をお待ちください...
         </div>
       ) : (
-        <div className="alert alert-info mb-4">
-          <h5>現在のお題: <strong>{room.theme}</strong></h5>
-          <p className="mb-0">現在のターン: {room.current_turn === 'p1' ? 'プレイヤー1' : 'プレイヤー2'}</p>
-        </div>
+        <GameStatus room={room} role={role} />
       )}
-
-      <div className="row mb-4 text-center">
-        <div className="col-6">
-          <div className="card bg-light">
-            <div className="card-body">
-              <h5 className="card-title text-danger">P1 ライフ</h5>
-              <h3 className="mb-0">{room.p1_lives !== undefined ? room.p1_lives : '-'}</h3>
-            </div>
-          </div>
-        </div>
-        <div className="col-6">
-          <div className="card bg-light">
-            <div className="card-body">
-              <h5 className="card-title text-success">P2 ライフ</h5>
-              <h3 className="mb-0">{room.p2_lives !== undefined ? room.p2_lives : '-'}</h3>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <div className="chat-area border rounded p-3 mb-3" style={{ height: '300px', overflowY: 'auto', backgroundColor: '#fff' }}>
         {gameState.logs.map((log) => {

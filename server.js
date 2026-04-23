@@ -42,10 +42,14 @@ db.serialize(() => {
       theme TEXT,
       state TEXT, -- 'waiting', 'playing', 'finished'
       current_turn TEXT, -- 'p1', 'p2'
+      turn_count INTEGER DEFAULT 1,
       p1_lives INTEGER,
       p2_lives INTEGER,
       p1_questions INTEGER DEFAULT 0,
       p2_questions INTEGER DEFAULT 0,
+      p1_time_used INTEGER DEFAULT 0,
+      p2_time_used INTEGER DEFAULT 0,
+      timer_start_time INTEGER,
       start_time INTEGER,
       last_update INTEGER,
       winner TEXT
@@ -145,6 +149,10 @@ io.on('connection', (socket) => {
       theme,
       state: 'playing',
       current_turn: 'p1', // P1からスタート
+      turn_count: 1,
+      p1_time_used: 0,
+      p2_time_used: 0,
+      timer_start_time: Date.now(),
       start_time: Date.now() // 開始時間をリセット
     });
     const room = await getRoom(socket.roomId);
@@ -159,10 +167,21 @@ io.on('connection', (socket) => {
     const room = await getRoom(socket.roomId);
     if (room.state !== 'playing' || room.current_turn !== socket.role) return;
 
-    // 質問回数をインクリメント
+    // 質問回数をインクリメントし、タイマーを一時停止する
     const updates = {};
-    if (socket.role === 'p1') updates.p1_questions = room.p1_questions + 1;
-    if (socket.role === 'p2') updates.p2_questions = room.p2_questions + 1;
+    if (socket.role === 'p1') {
+      updates.p1_questions = room.p1_questions + 1;
+      if (room.timer_start_time) {
+        updates.p1_time_used = room.p1_time_used + (Date.now() - room.timer_start_time);
+      }
+    }
+    if (socket.role === 'p2') {
+      updates.p2_questions = room.p2_questions + 1;
+      if (room.timer_start_time) {
+        updates.p2_time_used = room.p2_time_used + (Date.now() - room.timer_start_time);
+      }
+    }
+    updates.timer_start_time = null;
     await updateRoom(socket.roomId, updates);
 
     await addLog(socket.roomId, socket.role, 'question', text);
@@ -173,7 +192,17 @@ io.on('connection', (socket) => {
   socket.on('send_answer', async ({ text, targetRole }) => {
     if (!socket.roomId) return;
     await addLog(socket.roomId, 'gm', 'answer', `[${targetRole}へ] ${text}`);
-    // 回答が返ってきても、ターンのプレイヤーはお題回答かパスを行うのでターンはそのまま
+    
+    // 質問が回答されたのでプレイヤーのタイマーを再開する
+    const room = await getRoom(socket.roomId);
+    if (room && room.state === 'playing' && !room.timer_start_time) {
+      await updateRoom(socket.roomId, { timer_start_time: Date.now() });
+      
+      // クライアントへ同期
+      const updatedRoom = await getRoom(socket.roomId);
+      const logs = await getLogs(socket.roomId);
+      io.to(socket.roomId).emit('game_state_update', { room: updatedRoom, logs });
+    }
   });
 
   // お題予想 / パス
@@ -212,11 +241,27 @@ io.on('connection', (socket) => {
 
     room = await getRoom(socket.roomId);
 
+    // ターン終了時に時間を確定
+    const updates = {};
+    let timeSpent = 0;
+    if (room.timer_start_time) {
+      timeSpent = Date.now() - room.timer_start_time;
+    }
+    if (socket.role === 'p1') updates.p1_time_used = room.p1_time_used + timeSpent;
+    if (socket.role === 'p2') updates.p2_time_used = room.p2_time_used + timeSpent;
+
     // ターン交代 (ゲームが終了していない場合のみ)
     if (room.state === 'playing') {
       const nextTurn = room.current_turn === 'p1' ? 'p2' : 'p1';
-      await updateRoom(socket.roomId, { current_turn: nextTurn });
+      updates.current_turn = nextTurn;
+      if (nextTurn === 'p1') {
+        updates.turn_count = room.turn_count + 1;
+      }
+      updates.timer_start_time = Date.now();
+    } else {
+      updates.timer_start_time = null;
     }
+    await updateRoom(socket.roomId, updates);
     
     // 状態同期
     room = await getRoom(socket.roomId);
