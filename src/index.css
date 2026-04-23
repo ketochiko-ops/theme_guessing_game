@@ -14,6 +14,9 @@ body {
 .card {
   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
   border: none;
+  border-radius: 8px;
+}
+
 /* スマホ向けのレイアウト調整 (1画面に収める) */
 @media (max-width: 768px) {
   html, body, #root {
@@ -23,7 +26,7 @@ body {
 
   .game-container {
     height: 100vh;
-    padding: 4px;
+    padding: 8px;
     display: flex;
     flex-direction: column;
   }
@@ -32,26 +35,27 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 8px !important;
+    padding: 12px !important;
     overflow-y: auto; /* コンテンツが溢れた場合のみスクロール */
   }
 
-  /* 余白を極限まで削減 */
-  .mb-3, .mb-4 { margin-bottom: 4px !important; }
-  .p-3, .p-4 { padding: 4px !important; }
-  .py-3 { padding-top: 4px !important; padding-bottom: 4px !important; }
-  .card-body { padding: 4px !important; }
+  /* 余白を少し確保して窮屈さを軽減 */
+  .mb-2 { margin-bottom: 6px !important; }
+  .mb-3, .mb-4 { margin-bottom: 10px !important; }
+  .p-3, .p-4 { padding: 10px !important; }
+  .py-3 { padding-top: 8px !important; padding-bottom: 8px !important; }
+  .card-body { padding: 8px !important; }
 
-  /* 画面幅に応じた自動文字サイズ (vw指定) */
-  h1 { font-size: 5vw !important; margin-bottom: 2px !important; }
-  h2 { font-size: 4.5vw !important; margin-bottom: 2px !important; }
-  h3 { font-size: 4vw !important; margin-bottom: 0 !important; }
-  h5 { font-size: 3.5vw !important; margin-bottom: 2px !important; }
+  /* 画面幅に応じた自動文字サイズ (vw指定) - 少し小さめに調整 */
+  h1 { font-size: 4.5vw !important; margin-bottom: 6px !important; }
+  h2 { font-size: 4vw !important; margin-bottom: 6px !important; }
+  h3 { font-size: 3.5vw !important; margin-bottom: 2px !important; }
+  h5 { font-size: 3vw !important; margin-bottom: 6px !important; }
 
   /* フォーム要素とボタンの自動縮小 */
   .btn, .form-control {
-    padding: 4px 8px !important;
-    font-size: 3.5vw !important;
+    padding: 6px 10px !important;
+    font-size: 3vw !important;
   }
 
   /* チャットエリア周辺をFlexboxで自動伸縮させる */
@@ -60,22 +64,22 @@ body {
   }
   
   .col-md-6 {
-    margin-bottom: 4px;
+    margin-bottom: 6px;
   }
 
   .chat-area {
-    height: 25vh !important; /* 固定300pxをキャンセルし、画面高さの割合にする */
-    padding: 6px !important;
-    font-size: 3.2vw;
+    height: 35vh !important; /* スマホでも見やすい高さを少し確保 */
+    padding: 10px !important;
+    font-size: 3vw;
   }
 
   /* バッジ・小文字の調整 */
   .badge {
-    font-size: 2.8vw !important;
-    padding: 2px 4px !important;
+    font-size: 2.5vw !important;
+    padding: 3px 6px !important;
   }
 
   .small, small {
-    font-size: 3vw !important;
+    font-size: 2.5vw !important;
   }
 }

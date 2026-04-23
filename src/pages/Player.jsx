@@ -8,6 +8,7 @@ function Player() {
   const [questionInput, setQuestionInput] = useState('');
   const [guessInput, setGuessInput] = useState('');
   const [chatInput, setChatInput] = useState('');
+  const [logFilter, setLogFilter] = useState('all'); // 'all', 'game', 'system'
   const navigate = useNavigate();
   const chatBottomRef = useRef(null);
 
@@ -25,7 +26,7 @@ function Player() {
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [gameState.logs]);
+  }, [gameState.logs, logFilter]);
 
   if (!gameState.room) return <div className="text-center mt-5">ロード中...</div>;
 
@@ -40,6 +41,13 @@ function Player() {
     log.message_type === 'system' ||
     log.message_type === 'chat'
   );
+
+  let displayLogs = visibleLogs;
+  if (logFilter === 'game') {
+    displayLogs = visibleLogs.filter(log => ['question', 'answer', 'guess'].includes(log.message_type));
+  } else if (logFilter === 'system') {
+    displayLogs = visibleLogs.filter(log => ['system', 'chat'].includes(log.message_type));
+  }
 
   const handleSendQuestion = (e) => {
     e.preventDefault();
@@ -82,20 +90,33 @@ function Player() {
 
       <GameStatus room={room} role={role} />
 
-      <div className="chat-area border rounded p-3 mb-4" style={{ height: '300px', overflowY: 'auto', backgroundColor: '#fff' }}>
-        {!isPlaying && <div className="text-center text-muted mt-5">GMがお題を設定するのをお待ちください...</div>}
-        {visibleLogs.map((log) => (
-          <div key={log.id} className={`mb-2 ${log.sender_role === role ? 'text-end' : ''}`}>
-            <span className={`badge me-2 ${log.sender_role === 'gm' ? 'bg-dark' : 'bg-primary'}`}>
-              {log.sender_role.toUpperCase()}
-            </span>
-            <span>{log.message}</span>
-            <div className="text-muted" style={{ fontSize: '0.8rem' }}>
-              {new Date(log.timestamp).toLocaleTimeString()}
-            </div>
+      <div className="mb-4">
+        <div className="d-flex justify-content-between align-items-center mb-2">
+          <h5 className="mb-0">チャットログ</h5>
+          <div className="btn-group btn-group-sm">
+            <button className={`btn ${logFilter === 'all' ? 'btn-secondary' : 'btn-outline-secondary'}`} onClick={() => setLogFilter('all')}>すべて</button>
+            <button className={`btn ${logFilter === 'game' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setLogFilter('game')}>質問・回答のみ</button>
+            <button className={`btn ${logFilter === 'system' ? 'btn-info' : 'btn-outline-info'}`} onClick={() => setLogFilter('system')}>システムのみ</button>
           </div>
-        ))}
-        <div ref={chatBottomRef} />
+        </div>
+        <div className="chat-area border rounded p-3" style={{ height: '300px', overflowY: 'auto', backgroundColor: '#fff' }}>
+          {!isPlaying && <div className="text-center text-muted mt-5">GMがお題を設定するのをお待ちください...</div>}
+          {displayLogs.map((log) => {
+            let badgeColor = 'bg-primary';
+            if (log.sender_role === 'gm') badgeColor = 'bg-dark';
+            if (log.sender_role === 'obs') badgeColor = 'bg-info';
+
+            return (
+              <div key={log.id} className={`mb-1 ${log.sender_role === role ? 'text-end' : ''}`}>
+                <span className={`badge me-2 ${badgeColor}`}>
+                  {log.sender_role.toUpperCase()}
+                </span>
+                <span>{log.message}</span>
+              </div>
+            );
+          })}
+          <div ref={chatBottomRef} />
+        </div>
       </div>
 
       {room.chat_enabled === 1 && (
