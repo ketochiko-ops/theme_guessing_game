@@ -1,10 +1,11 @@
-import React, { useContext, useEffect, useRef } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SocketContext } from '../App';
 import GameStatus from '../components/GameStatus';
 
 function Observer() {
-  const { gameState, role } = useContext(SocketContext);
+  const { socket, gameState, role } = useContext(SocketContext);
+  const [chatInput, setChatInput] = useState('');
   const navigate = useNavigate();
   const chatBottomRef = useRef(null);
 
@@ -57,9 +58,34 @@ function Observer() {
         <div ref={chatBottomRef} />
       </div>
 
-      <div className="text-center text-muted mt-2">
-        <small>※あなたは観戦者です。チャットを送信することはできません。</small>
-      </div>
+      {room.chat_enabled === 1 ? (
+        <div className="mb-2">
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (chatInput) {
+              socket.emit('send_chat', { text: chatInput });
+              setChatInput('');
+            }
+          }}>
+            <div className="input-group">
+              <input 
+                type="text" 
+                className="form-control" 
+                placeholder="全体チャットにメッセージを送信..." 
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+              />
+              <button className="btn btn-secondary" type="submit" disabled={!chatInput}>
+                送信
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : (
+        <div className="text-center text-muted mt-2">
+          <small>※現在、全体チャットは無効にされています。</small>
+        </div>
+      )}
     </div>
   );
 }

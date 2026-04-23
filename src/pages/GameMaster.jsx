@@ -141,7 +141,21 @@ function GameMaster() {
 
       {!isWaiting && (
         <div className="card bg-light p-3 mb-3">
-          <h5>全体チャット</h5>
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <h5 className="mb-0">全体チャット</h5>
+            <div className="form-check form-switch">
+              <input 
+                className="form-check-input" 
+                type="checkbox" 
+                id="chatToggleSwitch" 
+                checked={room.chat_enabled === 1}
+                onChange={(e) => socket.emit('toggle_chat', { enabled: e.target.checked })}
+              />
+              <label className="form-check-label" htmlFor="chatToggleSwitch">
+                チャット許可: {room.chat_enabled === 1 ? 'ON' : 'OFF'}
+              </label>
+            </div>
+          </div>
           <form onSubmit={handleSendGeneralChat}>
             <div className="input-group">
               <input 

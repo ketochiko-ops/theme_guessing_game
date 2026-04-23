@@ -7,6 +7,7 @@ function Player() {
   const { socket, gameState, role } = useContext(SocketContext);
   const [questionInput, setQuestionInput] = useState('');
   const [guessInput, setGuessInput] = useState('');
+  const [chatInput, setChatInput] = useState('');
   const navigate = useNavigate();
   const chatBottomRef = useRef(null);
 
@@ -62,6 +63,14 @@ function Player() {
     }
   };
 
+  const handleSendChat = (e) => {
+    e.preventDefault();
+    if (chatInput) {
+      socket.emit('send_chat', { text: chatInput });
+      setChatInput('');
+    }
+  };
+
   return (
     <div className={`card p-4 transition-all ${isMyTurn ? 'bg-warning bg-opacity-25 border-warning border-3 shadow' : ''}`}>
       <div className="d-flex justify-content-between align-items-center mb-3">
@@ -88,6 +97,25 @@ function Player() {
         ))}
         <div ref={chatBottomRef} />
       </div>
+
+      {room.chat_enabled === 1 && (
+        <div className="mb-4">
+          <form onSubmit={handleSendChat}>
+            <div className="input-group">
+              <input 
+                type="text" 
+                className="form-control" 
+                placeholder="全体チャットにメッセージを送信..." 
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+              />
+              <button className="btn btn-secondary" type="submit" disabled={!chatInput}>
+                送信
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {(isPlaying || room.state === 'paused') && (
         <div>

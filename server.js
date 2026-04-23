@@ -52,7 +52,8 @@ db.serialize(() => {
       timer_start_time INTEGER,
       start_time INTEGER,
       last_update INTEGER,
-      winner TEXT
+      winner TEXT,
+      chat_enabled INTEGER DEFAULT 1
     )
   `);
   db.run(`
@@ -132,8 +133,8 @@ io.on('connection', (socket) => {
       // ルーム新規作成
       const now = Date.now();
       db.run(
-        `INSERT INTO rooms (room_id, state, p1_lives, p2_lives, start_time, last_update) VALUES (?, ?, ?, ?, ?, ?)`,
-        [roomId, 'waiting', GAME_CONFIG.INITIAL_LIVES, GAME_CONFIG.INITIAL_LIVES, now, now]
+        `INSERT INTO rooms (room_id, state, p1_lives, p2_lives, start_time, last_update, chat_enabled) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [roomId, 'waiting', GAME_CONFIG.INITIAL_LIVES, GAME_CONFIG.INITIAL_LIVES, now, now, 1]
       );
       room = await getRoom(roomId);
     }
@@ -158,7 +159,8 @@ io.on('connection', (socket) => {
       p2_time_used: 0,
       timer_start_time: null,
       start_time: Date.now(),
-      winner: null
+      winner: null,
+      chat_enabled: 1
     });
     
     // ログを削除
@@ -285,10 +287,26 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 全体チャット送信 (GM)
+  // 全体チャット送信
   socket.on('send_chat', async ({ text }) => {
-    if (!socket.roomId) return;
-    await addLog(socket.roomId, 'gm', 'chat', text);
+    if (!socket.roomId || !socket.role) return;
+    
+    // GM以外はchat_enabledが1の時のみ送信可能
+    if (socket.role !== 'gm') {
+      const room = await getRoom(socket.roomId);
+      if (!room || room.chat_enabled === 0) return;
+    }
+    
+    await addLog(socket.roomId, socket.role, 'chat', text);
+  });
+
+  // 全体チャットのON/OFF切り替え (GM)
+  socket.on('toggle_chat', async ({ enabled }) => {
+    if (!socket.roomId || socket.role !== 'gm') return;
+    await updateRoom(socket.roomId, { chat_enabled: enabled ? 1 : 0 });
+    const room = await getRoom(socket.roomId);
+    io.to(socket.roomId).emit('game_state_update', { room });
+    await addLog(socket.roomId, 'gm', 'system', `全体チャットが${enabled ? 'ON' : 'OFF'}になりました。`);
   });
 
   // お題予想 / パス
