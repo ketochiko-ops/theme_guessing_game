@@ -50,6 +50,13 @@ function GameMaster() {
     }
   };
 
+  const handleQuickAnswer = (e, text) => {
+    e.preventDefault();
+    if (text && pendingQuestionRole) {
+      socket.emit('send_answer', { text, targetRole: pendingQuestionRole });
+    }
+  };
+
   return (
     <div className="card p-4">
       <div className="d-flex justify-content-between align-items-center mb-3">
@@ -93,6 +100,31 @@ function GameMaster() {
       {isPlaying && (
         <div className="card bg-light p-3">
           <h5>プレイヤーへの回答</h5>
+
+          <div className="mb-2 d-flex gap-2">
+            <button 
+              className="btn btn-primary" 
+              onClick={(e) => handleQuickAnswer(e, 'はい')}
+              disabled={!pendingQuestionRole}
+            >
+              はい
+            </button>
+            <button 
+              className="btn btn-danger" 
+              onClick={(e) => handleQuickAnswer(e, 'いいえ')}
+              disabled={!pendingQuestionRole}
+            >
+              いいえ
+            </button>
+            <button 
+              className="btn btn-secondary" 
+              onClick={(e) => handleQuickAnswer(e, 'どちらとも言えない')}
+              disabled={!pendingQuestionRole}
+            >
+              どちらとも言えない
+            </button>
+          </div>
+
           <div className="input-group">
             <input 
               type="text" 
@@ -103,18 +135,11 @@ function GameMaster() {
               disabled={!pendingQuestionRole}
             />
             <button 
-              className="btn btn-outline-danger" 
-              onClick={(e) => handleAnswer(e, 'p1')}
-              disabled={pendingQuestionRole !== 'p1'}
+              className="btn btn-outline-primary" 
+              onClick={(e) => handleAnswer(e, pendingQuestionRole)}
+              disabled={!pendingQuestionRole || !answerInput}
             >
-              P1へ回答
-            </button>
-            <button 
-              className="btn btn-outline-success" 
-              onClick={(e) => handleAnswer(e, 'p2')}
-              disabled={pendingQuestionRole !== 'p2'}
-            >
-              P2へ回答
+              回答
             </button>
           </div>
           {!pendingQuestionRole && (
