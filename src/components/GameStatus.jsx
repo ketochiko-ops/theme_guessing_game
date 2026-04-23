@@ -41,7 +41,7 @@ function GameStatus({ room, role }) {
             <div className="card-body py-3">
               <h5 className="card-title text-danger">P1 ライフ</h5>
               <h3 className="mb-1">{room.p1_lives !== undefined ? room.p1_lives : '-'}</h3>
-              <div className="text-muted small">使用時間: {currentP1Time}秒</div>
+              <div className="text-muted small">使用時間: {Math.floor(currentP1Time / 60)}分 {currentP1Time % 60}秒</div>
             </div>
           </div>
         </div>
@@ -50,7 +50,7 @@ function GameStatus({ room, role }) {
             <div className="card-body py-3">
               <h5 className="card-title text-success">P2 ライフ</h5>
               <h3 className="mb-1">{room.p2_lives !== undefined ? room.p2_lives : '-'}</h3>
-              <div className="text-muted small">使用時間: {currentP2Time}秒</div>
+              <div className="text-muted small">使用時間: {Math.floor(currentP2Time / 60)}分 {currentP2Time % 60}秒</div>
             </div>
           </div>
         </div>

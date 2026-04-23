@@ -61,7 +61,7 @@ function Result() {
           
           <ul className="list-unstyled text-start mb-0">
             <li>残りライフ: {room.winner === 'p1' ? room.p1_lives : room.p2_lives}</li>
-            <li>経過時間: {elapsedSeconds}秒</li>
+            <li>経過時間: {Math.floor(elapsedSeconds / 60)}分 {elapsedSeconds % 60}秒</li>
             <li>質問回数: {room.winner === 'p1' ? room.p1_questions : room.p2_questions}回</li>
           </ul>
         </div>
