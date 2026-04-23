@@ -50,15 +50,88 @@ describe('Backend Socket & DB Integration', () => {
     });
   });
 
-  it('GMがお題を設定し、状態が playing に変わること', () => {
+  it('GMがお題を設定し、状態が ready に変わること', () => {
     return new Promise((resolve) => {
       clientGM.emit('set_theme', { theme: 'りんご' });
 
       clientGM.on('game_state_update', (data) => {
-        if (data.room && data.room.state === 'playing') {
+        if (data.room && data.room.state === 'ready') {
           clientGM.off('game_state_update');
           expect(data.room.theme).toBe('りんご');
+          resolve();
+        }
+      });
+    });
+  });
+
+  it('GMがゲームを開始し、状態が playing に変わること', () => {
+    return new Promise((resolve) => {
+      clientGM.emit('start_game');
+
+      clientGM.on('game_state_update', (data) => {
+        if (data.room && data.room.state === 'playing') {
+          clientGM.off('game_state_update');
           expect(data.room.current_turn).toBe('p1');
+          resolve();
+        }
+      });
+    });
+  });
+
+  it('プレイヤーが質問を送信できること', () => {
+    return new Promise((resolve) => {
+      clientP1.emit('join_room', { roomId: 'test-room', role: 'p1' });
+      
+      setTimeout(() => {
+        clientP1.emit('send_question', { text: '赤いですか？' });
+      }, 100);
+
+      clientGM.on('game_state_update', (data) => {
+        const lastLog = data.logs[data.logs.length - 1];
+        if (lastLog && lastLog.message_type === 'question' && lastLog.message === '赤いですか？') {
+          clientGM.off('game_state_update');
+          expect(data.room.p1_questions).toBe(1);
+          resolve();
+        }
+      });
+    });
+  });
+
+  it('GMが質問に回答できること', () => {
+    return new Promise((resolve) => {
+      clientGM.emit('send_answer', { text: 'はい', targetRole: 'p1' });
+
+      clientGM.on('game_state_update', (data) => {
+        const lastLog = data.logs[data.logs.length - 1];
+        if (lastLog && lastLog.message_type === 'answer' && lastLog.message.includes('はい')) {
+          clientGM.off('game_state_update');
+          resolve();
+        }
+      });
+    });
+  });
+
+  it('チャットの有効・無効を切り替えられること', () => {
+    return new Promise((resolve) => {
+      clientGM.emit('toggle_chat', { enabled: false });
+
+      clientGM.on('game_state_update', (data) => {
+        if (data.room && data.room.chat_enabled === 0) {
+          clientGM.off('game_state_update');
+          resolve();
+        }
+      });
+    });
+  });
+
+  it('正解を出すとゲームが終了すること', () => {
+    return new Promise((resolve) => {
+      clientP1.emit('guess_or_pass', { action: 'guess', guess: 'りんご' });
+
+      clientGM.on('game_state_update', (data) => {
+        if (data.room && data.room.state === 'finished') {
+          clientGM.off('game_state_update');
+          expect(data.room.winner).toBe('p1');
           resolve();
         }
       });

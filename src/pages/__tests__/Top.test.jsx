@@ -28,10 +28,10 @@ describe('Top Component', () => {
     );
   };
 
-  it('初期レンダリング時、ルームIDがないため入室ボタンは無効であること', () => {
+  it('GM選択時はルームIDが自動生成されるため入室ボタンが有効であること', () => {
     renderTop();
     const submitBtn = screen.getByRole('button', { name: /ルームに参加/i });
-    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).not.toBeDisabled();
   });
 
   it('fetch を通じてお知らせが抽出・表示されること', async () => {

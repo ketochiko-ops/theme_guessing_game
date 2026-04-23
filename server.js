@@ -12,8 +12,8 @@ const __dirname = path.dirname(__filename);
 const GAME_CONFIG = {
   INITIAL_LIVES: 5,
   SCORE_MULTIPLIER: 1000,
-  TIME_PENALTY: 10,
-  QUESTION_PENALTY: 50,
+  TIME_PENALTY: 1,      // 1秒につき1ポイント減少
+  QUESTION_PENALTY: 10,  // 質問1回につき10ポイント減少
   CLEANUP_INTERVAL_MS: 1000 * 60 * 10, // 10分ごとにクリーンアップ処理を実行
   CLEANUP_THRESHOLD_MS: 1000 * 60 * 60, // 1時間更新がないルームを削除
 };
